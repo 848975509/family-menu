@@ -1,20 +1,4 @@
-// Local-only drafts and a copyable order for sharing with family.
-const escapeText = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const today = () => {const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
-const saveDraft = () => {try{localStorage.setItem('family-menu-draft',JSON.stringify(order));}catch{}};
-update = function(){const n=order.reduce((s,x)=>s+x.qty,0);$('#count').textContent=n?`已选 ${n} 道菜`:'还没有选菜';$('#orderList').innerHTML=order.length?order.map((x,i)=>`<div class="line"><span>${escapeText(x.name)}</span><div class="qty"><button aria-label="减少 ${escapeText(x.name)}" data-i="${i}" data-d="-">−</button><b>${x.qty}</b><button aria-label="增加 ${escapeText(x.name)}" data-i="${i}" data-d="+">＋</button></div></div>`).join(''):'<div class="empty">从食材开始挑一道吧</div>';saveDraft();};
-try{const draft=JSON.parse(localStorage.getItem('family-menu-draft')||'[]');if(Array.isArray(draft))order=draft.filter(x=>typeof x.name==='string'&&Number.isInteger(x.qty)&&x.qty>0);}catch{}
-$('#date').value=today();$('#date').min=today();
-document.querySelector('label').htmlFor='date';document.querySelectorAll('label')[2].htmlFor='note';
-const style=document.createElement('style');style.textContent='[hidden]{display:none!important}button,input,textarea{font-size:16px}button{min-height:44px}.bar{padding-bottom:calc(11px + env(safe-area-inset-bottom))}.panel{margin:0 auto}.receipt{white-space:pre-wrap;line-height:1.8;font:inherit;background:#f3f5ef;padding:16px;border-radius:12px;overflow-wrap:anywhere}.close-sheet{float:right;border:0;background:#e7f1ed;border-radius:9px;padding:8px 12px;color:#153f42}';document.head.append(style);
-const receipt=document.createElement('div');receipt.className='sheet';receipt.id='receiptSheet';receipt.innerHTML='<section class="panel" role="dialog" aria-label="已生成的预订单"><button class="close-sheet" id="closeReceipt">关闭</button><h2>预订单已生成</h2><pre class="receipt" id="receiptText"></pre><button class="submit" id="copyReceipt">复制清单，发给家人</button><p style="font-size:13px;color:#657370">清单保存在此设备；复制后可粘贴到微信发送。</p></section>';document.body.append(receipt);
-$('#closeReceipt').onclick=()=>receipt.classList.remove('show');receipt.onclick=e=>{if(e.target===receipt)receipt.classList.remove('show');};
-const showReceipt=text=>{$('#receiptText').textContent=text;receipt.classList.add('show');};
-$('#submit').onclick=()=>{if(!order.length)return toast('请先选择菜品');const date=$('#date').value;if(!date||date<today())return toast('请选择今天或之后的日期');const text=`家庭预点菜单\n${date} · ${meal}\n\n${order.map((x,i)=>`${i+1}. ${x.name}${x.qty>1?' × '+x.qty:''}`).join('\n')}\n\n备注：${$('#note').value.trim()||'无'}`;try{localStorage.setItem('family-menu-last-order',text);}catch{}$('#orderSheet').classList.remove('show');showReceipt(text);};
-$('#copyReceipt').onclick=async()=>{const text=$('#receiptText').textContent;try{await navigator.clipboard.writeText(text);toast('已复制，可粘贴到微信');}catch{const range=document.createRange();range.selectNodeContents($('#receiptText'));const selection=window.getSelection();selection.removeAllRanges();selection.addRange(range);toast('请长按选中的文字复制');}};
-const lastButton=document.createElement('button');lastButton.className='submit';lastButton.style.background='#237871';lastButton.textContent='查看上次预订单';lastButton.onclick=()=>{let text;try{text=localStorage.getItem('family-menu-last-order');}catch{}text?showReceipt(text):toast('还没有生成过预订单');};document.querySelector('.custom').append(lastButton);
-const closeOrder=document.createElement('button');closeOrder.className='close-sheet';closeOrder.textContent='继续点菜';closeOrder.onclick=()=>$('#orderSheet').classList.remove('show');document.querySelector('#orderSheet .panel').prepend(closeOrder);
-// Keep every explicitly supplied dish available without guessing an unspecified fish.
+const catalog={"鱼":[["黄鱼",["葱油黄鱼","红烧黄鱼","雪菜黄鱼","椒盐黄鱼","香煎黄鱼","砂锅焗黄鱼"]],["鲳鱼",["葱油鲳鱼","红烧鲳鱼","雪菜鲳鱼","鲳鱼烧年糕"]],["虾潺",["葱油虾潺","红烧虾潺","椒盐虾潺","虾潺烧豆腐","虾潺焗豆腐"]],["玉秃",["葱油玉秃","红烧玉秃","香煎玉秃","玉秃蒸面结"]],["鸦片鱼头",["葱油鸦片鱼头","砂锅焗鸦片鱼头","鱼头豆腐汤"]],["鱿鱼",["葱油鱿鱼","葱姜炒鱿鱼","大蒜炒鱿鱼","蒜香干煎鱿鱼","荷兰豆炒鱿鱼","芹菜炒鱿鱼","酱爆鱿鱼","大虾炒鱿鱼"]],["鲈鱼",["葱油鲈鱼","红烧鲈鱼","雪菜鲈鱼","砂锅焗鲈鱼"]],["鳜鱼",["葱油鳜鱼","红烧鳜鱼","砂锅焗鳜鱼"]],["石斑鱼",["葱油石斑鱼","砂锅焗石斑鱼"]],["多宝鱼",["葱油多宝鱼"]],["昂刺鱼",["葱油昂刺鱼","红烧昂刺鱼","雪菜昂刺鱼"]],["黑鱼",["酸菜鱼","蒜香黑鱼片","葱油黑鱼片"]]],"虾":[["对虾",["蒜蓉粉丝对虾","清蒸对虾","椒盐对虾","油焖对虾","咖喱对虾","蒜香黄油对虾","砂锅焗对虾","盐水白灼对虾","避风塘对虾"]],["罗氏虾",["蒜蓉粉丝罗氏虾","清蒸罗氏虾","椒盐罗氏虾","油焖罗氏虾","咖喱罗氏虾","蒜香黄油罗氏虾","砂锅焗罗氏虾","盐水白灼罗氏虾","避风塘罗氏虾"]],["基围虾",["蒜蓉粉丝基围虾","清蒸基围虾","盐水白灼基围虾"]],["小白虾",["清蒸小白虾","盐水白灼小白虾"]],["皮皮虾",["清蒸皮皮虾","椒盐皮皮虾","砂锅焗皮皮虾","盐水白灼皮皮虾","葱烤皮皮虾"]],["虾仁",["芥末虾球","香葱虾球","葱爆虾仁","玉米粒炒虾仁","虾仁蒸蛋","虾仁滑蛋","西兰花炒虾仁","芦笋炒虾仁","西芹炒虾仁","咸蛋黄虾仁","椒盐虾仁","口蘑炒虾仁","时蔬虾饼"]]],"蟹":[["白蟹",["姜葱炒白蟹","清蒸白蟹","葱油白蟹","砂锅焗白蟹","白蟹炒年糕","白蟹豆腐羹","白蟹蒸蛋","酱烧白蟹","油焖白蟹"]],["毛蟹",["姜葱炒毛蟹","清蒸毛蟹","葱油毛蟹","砂锅焗毛蟹","毛蟹炒年糕","毛蟹豆腐羹","毛蟹蒸蛋","酱烧毛蟹","油焖毛蟹"]],["青蟹",["姜葱炒青蟹","清蒸青蟹","葱油青蟹","砂锅焗青蟹","青蟹炒年糕","青蟹豆腐羹","青蟹蒸蛋","酱烧青蟹","油焖青蟹"]]],"贝类":[["蛤蜊",["白灼蛤蜊","清蒸蛤蜊","葱油蛤蜊","葱姜炒蛤蜊","蒜香黄油蛤蜊","砂锅盐焗蛤蜊","蛤蜊蒸蛋","蛤蜊蛋花汤","蛤蜊丝瓜汤","蛤蜊冬瓜汤","酱爆蛤蜊"]],["花甲",["白灼花甲","清蒸花甲","葱油花甲","葱姜炒花甲","蒜香黄油花甲","砂锅盐焗花甲","花甲蒸蛋","花甲蛋花汤","花甲丝瓜汤","花甲冬瓜汤","酱爆花甲"]],["贻贝",["白灼贻贝","清蒸贻贝","葱油贻贝","葱姜炒贻贝","蒜香黄油贻贝","砂锅盐焗贻贝","贻贝蒸蛋","贻贝蛋花汤","贻贝丝瓜汤","贻贝冬瓜汤","酱爆贻贝"]],["花螺",["白灼花螺","清蒸花螺","葱油花螺","葱姜炒花螺","蒜香黄油花螺","砂锅盐焗花螺","酱爆花螺"]]],"海鲜拼盘":[["海鲜拼盘",["家烧海鲜拼盘","砂锅海鲜拼盘","清蒸海鲜拼盘","葱烧海鲜拼盘"]]]};
 catalog['鱼'].push(['鱿鱼仔',['砂锅焗鱿鱼仔']]);
 catalog['鱼'].find(x=>x[0]==='鸦片鱼头')[1]=['葱油鸦片鱼头','砂锅焗鸦片鱼头'];
 catalog['鱼'].find(x=>x[0]==='黑鱼')[1]=['蒜香黑鱼片','葱油黑鱼片'];
@@ -2088,33 +2072,550 @@ const dishPhotoNotes = {
   "砂锅海鲜拼盘": "图片展示砂锅海鲜搭配，具体海鲜品种以实际准备为准。",
   "家烧海鲜拼盘": "图片展示海鲜拼盘，具体海鲜组合和家烧做法以实际准备为准。"
 };
-const directCategories = new Set(['禽类','猪肉类','牛肉类','蛋','豆制品','蔬菜类','汤类','主食']);
-const menuAssetVersion = '20261111-audit-1';
-const photoUrl = name => dishImages[name]+'?v='+menuAssetVersion;
-const photoLabel = name => dishPhotoNotes[name]?'参考图':'示意图';
-const photoCard = name => `<article class="dish-card"><button class="dish-photo-button" type="button" data-preview="${escapeText(name)}" aria-label="查看${escapeText(name)}示意图"><img src="${photoUrl(name)}" alt="${escapeText(name)}示意图" loading="lazy" decoding="async"><span class="photo-tag">${photoLabel(name)}</span></button><div class="dish-card-body"><b>${escapeText(name)}</b><button type="button" data-add="${escapeText(name)}">加入预订单</button></div></article>`;
-const textDish = (name,group) => `<article class="recipe ${dishImages[name]?'with-photo':''}">${dishImages[name]?`<button class="menu-thumb" type="button" data-preview="${escapeText(name)}" aria-label="查看${escapeText(name)}示意图"><img src="${photoUrl(name)}" alt="${escapeText(name)}示意图" loading="lazy" decoding="async"><span class="thumb-caption">${dishPhotoNotes[name]?'参考':'示意'}</span></button>`:''}<div class="menu-dish-name"><b>${escapeText(name)}</b><span>${escapeText(group)} · 家宴预点</span></div><button type="button" data-add="${escapeText(name)}">加入</button></article>`;
-const seafoodRecipes = openRecipes;
-openRecipes = function(food){
-  const dishes=catalog[activeCat].find(x=>x[0]===food)?.[1];
-  if(!dishes)return seafoodRecipes(food);
-  const pictured=dishes.filter(name=>dishImages[name]);
-  if(!pictured.length)return seafoodRecipes(food);
-  $('#categoryView').hidden=true;$('#recipeView').hidden=false;
-  const plain=dishes.filter(name=>!dishImages[name]);
-  $('#recipeView').innerHTML=`<div class="topbar"><button class="back" type="button" data-back>‹</button><div><h2>${escapeText(food)}怎么做？</h2><p>${dishes.length} 种做法 · 图片为示意图</p></div></div><div class="dish-grid">${pictured.map(photoCard).join('')}</div>${plain.length?`<div class="recipes">${plain.map(name=>textDish(name,food)).join('')}</div>`:''}`;
-  $('#recipeView').onclick=e=>{const b=e.target.closest('button');if(!b)return;if(b.hasAttribute('data-back'))return openCategory(activeCat);if(b.dataset.preview)return previewDish(b.dataset.preview);if(b.dataset.add)add(b.dataset.add);};
+
+// Each meal owns its dishes, quantities and notes. Legacy drafts are migrated once.
+const $ = selector => document.querySelector(selector);
+const escapeText = value => String(value).replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+const meals = ['早饭', '中饭', '晚饭'];
+const storageKey = 'family-menu-meals-v2';
+const categories = Object.keys(catalog);
+const dishes = Object.entries(catalog).flatMap(([category, groups]) => groups.flatMap(([group, names]) => names.map(name => ({category, group, name}))));
+const dishByName = new Map(dishes.map(dish => [dish.name, dish]));
+const viewPositions = new Map();
+const selectedGroups = new Map();
+let category = categories[0];
+let query = '';
+let toastTimer;
+let mealChoice = '晚饭';
+let receiptKey = '';
+let storageWarningShown = false;
+
+function today() {
+  const date = new Date();
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+function validDate(date) {
+  if (typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
+  const parsed = new Date(date + 'T12:00:00');
+  return !Number.isNaN(parsed.getTime()) && parsed.getFullYear() === Number(date.slice(0, 4)) && parsed.getMonth() + 1 === Number(date.slice(5, 7)) && parsed.getDate() === Number(date.slice(8, 10));
+}
+function readStorage(key, fallback) {
+  try { return JSON.parse(localStorage.getItem(key)) ?? fallback; }
+  catch { return fallback; }
+}
+function cleanItems(items) {
+  const unique = new Map();
+  for (const item of Array.isArray(items) ? items : []) {
+    if (!item || typeof item.name !== 'string' || !item.name.trim() || !Number.isSafeInteger(item.qty) || item.qty < 1) continue;
+    const name = item.name.trim();
+    const previous = unique.get(name);
+    unique.set(name, {name, qty: Math.min(999, (previous?.qty || 0) + item.qty), note: typeof item.note === 'string' ? item.note : ''});
+  }
+  return [...unique.values()];
+}
+function cleanMeal(value, date, meal) {
+  return {date, meal, items: cleanItems(value?.items), note: typeof value?.note === 'string' ? value.note : '', wish: typeof value?.wish === 'string' ? value.wish.slice(0, 120) : ''};
+}
+const stored = readStorage(storageKey, {});
+const hour = new Date().getHours();
+const defaultMeal = hour < 10 ? '早饭' : hour < 15 ? '中饭' : '晚饭';
+let activeKey = typeof stored.active === 'string' ? stored.active : `${today()}|${defaultMeal}`;
+let [activeDate, activeMeal] = activeKey.split('|');
+if (!validDate(activeDate) || !meals.includes(activeMeal)) {
+  activeDate = today();
+  activeMeal = defaultMeal;
+  activeKey = `${activeDate}|${activeMeal}`;
+}
+let current = cleanMeal(stored.entries?.[activeKey], activeDate, activeMeal);
+if (!stored.version) current.items = cleanItems(readStorage('family-menu-draft', []));
+let localEntries = {...(stored.entries || {}), [activeKey]: current};
+let lastReceiptMessage = typeof stored.lastReceiptMessage === 'string' ? stored.lastReceiptMessage.slice(0, 120) : '';
+let lastReceipt = typeof stored.lastReceipt === 'string' ? stored.lastReceipt : '';
+if (!lastReceipt) {
+  try { lastReceipt = localStorage.getItem('family-menu-last-order') || ''; } catch {}
+}
+
+function notify(message) {
+  const toast = $('#toast');
+  const parent = document.querySelector('dialog[open] .sheet-body') || document.body;
+  parent.append(toast);
+  toast.textContent = message;
+  toast.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { toast.hidden = true; }, 2400);
+}
+function save() {
+  // Read before writing so editing one meal preserves other meals from another tab.
+  const latest = readStorage(storageKey, {});
+  localEntries = {...localEntries, ...(latest.entries || {}), [activeKey]: current};
+  try {
+    localStorage.setItem(storageKey, JSON.stringify({version: 2, active: activeKey, entries: localEntries, lastReceipt: lastReceipt || latest.lastReceipt || '', lastReceiptMessage}));
+  } catch {
+    if (!storageWarningShown) notify('此浏览器暂时无法保存，请及时复制清单');
+    storageWarningShown = true;
+  }
+}
+function mealLabel(value = current) {
+  return `${Number(value.date.slice(5, 7))}月${Number(value.date.slice(8, 10))}日 · ${value.meal}`;
+}
+function quantity(name) {
+  return current.items.find(item => item.name === name)?.qty || 0;
+}
+function controls(name) {
+  const qty = quantity(name);
+  const safe = escapeText(name);
+  if (!qty) return `<button class="add-button" data-add="${safe}" aria-label="加入${safe}">＋ 加入</button>`;
+  return `<div class="stepper"><button data-minus="${safe}" aria-label="减少${safe}">−</button><output aria-label="${safe}已选份数">${qty}</output><button class="plus" data-add="${safe}" aria-label="增加${safe}">＋</button></div>`;
+}
+function renderCategories() {
+  $('#categories').innerHTML = categories.map(name => {
+    const count = current.items.filter(item => dishByName.get(item.name)?.category === name).length;
+    return `<button class="category ${name === category && !query ? 'active' : ''}" data-category="${name}" aria-current="${name === category && !query ? 'true' : 'false'}">${name}${count ? `<small aria-label="已选${count}道">${count}</small>` : ''}</button>`;
+  }).join('');
+}
+function groupForCategory() {
+  return selectedGroups.get(category) || catalog[category][0][0];
+}
+function viewKey() {
+  return query ? 'search|' + query : category + '|' + groupForCategory();
+}
+function rememberPosition() {
+  viewPositions.set(viewKey(), $('#dishList').scrollTop);
+}
+function normalize(text) {
+  return text.replaceAll('西红柿', '番茄').replaceAll('肉沫', '肉末').replaceAll('炒蛋', '炒鸡蛋').replace(/\s+/g, '').toLowerCase();
+}
+function dishCard(dish) {
+  const name = escapeText(dish.name);
+  const selected = quantity(dish.name) > 0;
+  return `<article class="dish ${selected ? 'selected' : ''}" data-dish="${name}"><button class="photo" data-preview="${name}" aria-label="查看${name}图片"><img src="${escapeText(dishImages[dish.name])}?v=20261111-audit-1" alt="${name}" loading="lazy" decoding="async"><span>${dishPhotoNotes[dish.name] ? '参考图' : '示意图'}</span></button><div class="dish-info"><h3 class="dish-name">${name}</h3><div class="dish-actions"><span class="picked">${selected ? '已选' : ''}</span><div class="dish-control">${controls(dish.name)}</div></div></div></article>`;
+}
+function renderMenu() {
+  const groups = catalog[category];
+  const group = groupForCategory();
+  const results = query ? dishes.filter(dish => normalize(dish.name + dish.group + dish.category).includes(normalize(query))) : dishes.filter(dish => dish.category === category && dish.group === group);
+  $('#contentHead').innerHTML = `<div class="content-heading"><h2>${query ? '搜索结果' : category}</h2><span>${results.length} 道菜</span></div>${query ? '' : `<div class="groups" aria-label="食材或菜品分组">${groups.map(([name]) => `<button class="group ${name === group ? 'active' : ''}" data-group="${escapeText(name)}" aria-pressed="${name === group}">${escapeText(name)}</button>`).join('')}</div>`}`;
+  $('#dishList').innerHTML = results.length ? results.map(dishCard).join('') : '<div class="empty">没有找到这道菜<br><button class="text-link" id="searchCustom">作为自定义菜加入</button></div>';
+  $('#dishList').scrollTop = viewPositions.get(viewKey()) || 0;
+  const activeGroup = document.querySelector('.group.active');
+  if (activeGroup) activeGroup.parentElement.scrollLeft = Math.max(0, activeGroup.offsetLeft - activeGroup.parentElement.offsetLeft - 12);
+  $('#clearSearch').hidden = !query;
+  renderCategories();
+}
+function refreshSelection() {
+  renderCategories();
+  for (const row of document.querySelectorAll('[data-dish]')) {
+    const name = row.dataset.dish;
+    row.classList.toggle('selected', quantity(name) > 0);
+    row.querySelector('.picked').textContent = quantity(name) ? '已选' : '';
+    row.querySelector('.dish-control').innerHTML = controls(name);
+  }
+  const total = current.items.reduce((sum, item) => sum + item.qty, 0);
+  $('#orderCount').textContent = current.items.length ? `已选 ${current.items.length} 道菜 · ${total} 份` : '还没有选菜';
+  $('#orderHint').textContent = current.items.length ? '点击查看、调整这一餐' : '挑几道家人想吃的菜';
+  $('#mealLabel').textContent = mealLabel();
+}
+function changeQuantity(name, delta) {
+  let item = current.items.find(item => item.name === name);
+  if (!item && delta > 0) {
+    item = {name, qty: 0, note: ''};
+    current.items.push(item);
+  }
+  if (!item) return;
+  item.qty = Math.min(999, item.qty + delta);
+  current.items = current.items.filter(item => item.qty > 0);
+  save();
+  refreshSelection();
+  if ($('#orderDialog').open) renderOrder();
+  for (const row of document.querySelectorAll('[data-dish]')) {
+    if (row.dataset.dish === name) row.querySelector('output')?.classList.add('bump');
+  }
+}
+function closeDialog(dialog) {
+  // Keep the shared status element reachable after a dialog closes.
+  document.body.append($('#toast'));
+  $('#toast').hidden = true;
+  dialog.close();
+}
+function openDialog(id) {
+  for (const dialog of document.querySelectorAll('dialog[open]')) closeDialog(dialog);
+  $(id).showModal();
+  $(id).scrollTop = 0;
+}
+function renderOrder() {
+  $('#changeOrderMeal').innerHTML = `<span>${mealLabel()}</span><small>更换 ›</small>`;
+  $('#orderList').innerHTML = current.items.length ? current.items.map(item => {
+    const name = escapeText(item.name);
+    return `<article class="order-row"><div class="order-top"><strong>${name}</strong>${controls(item.name)}</div><div class="order-tools"><label for="item-note-${current.items.indexOf(item)}">这道菜的备注</label><button class="delete" data-delete="${name}" aria-label="删除${name}">删除</button></div><input class="field item-note" id="item-note-${current.items.indexOf(item)}" data-note="${name}" maxlength="200" placeholder="例如少盐、不要葱" value="${escapeText(item.note)}"></article>`;
+  }).join('') : '<div class="empty">这一餐还没有选菜，先去挑几道吧。</div>';
+  $('#note').value = current.note;
+  $('#orderTotal').textContent = `${current.items.length} 道菜 · 共 ${current.items.reduce((sum, item) => sum + item.qty, 0)} 份`;
+  $('#generate').disabled = !current.items.length;
+  $('#orderError').hidden = true;
+}
+function openOrder() {
+  renderOrder();
+  openDialog('#orderDialog');
+}
+function openMeal(date = current.date, meal = current.meal) {
+  $('#date').value = date;
+  $('#date').min = today();
+  mealChoice = meal;
+  renderMealOptions();
+  $('#mealError').hidden = true;
+  openDialog('#mealDialog');
+}
+function renderMealOptions() {
+  $('#mealOptions').innerHTML = meals.map(meal => `<button type="button" data-meal="${meal}" class="${meal === mealChoice ? 'active' : ''}" aria-pressed="${meal === mealChoice}">${meal}</button>`).join('');
+}
+function switchMeal(date, meal) {
+  save();
+  activeKey = `${date}|${meal}`;
+  const saved = readStorage(storageKey, {});
+  current = cleanMeal(saved.entries?.[activeKey] || localEntries[activeKey], date, meal);
+  save();
+  refreshSelection();
+}
+function openCustom(name = '') {
+  $('#customName').value = name;
+  $('#customNote').value = '';
+  openDialog('#customDialog');
+}
+function preview(name) {
+  $('#previewTitle').textContent = name;
+  $('#previewImage').src = dishImages[name] + '?v=20261111-audit-1';
+  $('#previewImage').alt = name + '示意图';
+  $('#previewNote').textContent = dishPhotoNotes[name] || '图片为菜品示意，实际成品以家中制作为准。';
+  const source = dishImageSources[name];
+  const link = $('#previewSource');
+  link.hidden = !source;
+  link.textContent = source?.label || '';
+  link.removeAttribute('href');
+  if (source?.url && /^https?:\/\//.test(source.url)) link.href = source.url;
+  openDialog('#previewDialog');
+}
+function showReceipt(text, key = '', celebrate = false) {
+  receiptKey = key;
+  receiptBase = text;
+  $('#receiptText').textContent = text;
+  $('#copyStatus').textContent = '';
+  $('#wish').value = lastReceiptMessage;
+  $('#heartBurst').replaceChildren();
+  $('#editMeal').hidden = !key;
+  $('#nextMeal').hidden = !key;
+  openDialog('#receiptDialog');
+  if (celebrate) celebrateMeal();
+}
+
+$('#categories').onclick = event => {
+  const button = event.target.closest('[data-category]');
+  if (!button) return;
+  rememberPosition();
+  category = button.dataset.category;
+  query = '';
+  $('#search').value = '';
+  renderMenu();
 };
-style.textContent += '.dish-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;padding:0 16px 18px}.dish-card{min-width:0;overflow:hidden;border:1px solid var(--line);border-radius:17px;background:var(--paper)}.dish-photo-button{display:block;position:relative;width:100%;aspect-ratio:4/3;padding:0;border:0;background:#ece8df;overflow:hidden}.dish-photo-button img{display:block;width:100%;height:100%;object-fit:cover}.photo-tag{position:absolute;bottom:7px;left:7px;padding:3px 6px;border-radius:6px;background:#173c3ecc;color:white;font-size:11px}.dish-card-body{padding:10px;display:grid;gap:9px}.dish-card-body b{font-size:14px;line-height:1.35;min-height:38px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.dish-card-body button{border:0;border-radius:10px;min-height:42px;background:#e5f1ed;color:var(--teal);font-weight:700}.menu-intro{padding:0 16px 14px;color:var(--muted);font-size:13px}.menu-section{margin:0 16px 10px;border:1px solid var(--line);border-radius:15px;background:var(--paper);overflow:hidden}.menu-section summary{display:flex;justify-content:space-between;align-items:center;cursor:pointer;padding:15px;font-weight:700;list-style:none}.menu-section summary::-webkit-details-marker{display:none}.menu-section summary small{font-weight:400;color:var(--muted)}.menu-section-list{display:grid;gap:8px;padding:0 10px 10px}.menu-section-list .recipe{padding:10px}.photo-preview-img{display:block;width:100%;max-height:55vh;object-fit:contain;border-radius:12px;background:#eee8de}.photo-preview-note{font-size:13px;color:var(--muted)}';
-style.textContent += '.recipe.with-photo{padding:9px;gap:10px}.recipe .menu-dish-name{flex:1;min-width:0}.recipe .menu-thumb{position:relative;padding:0;width:76px;height:58px;min-height:58px;flex:0 0 76px;overflow:hidden;background:#eee8de}.menu-thumb img{display:block;width:100%;height:100%;object-fit:cover}.recipe .thumb-caption{position:absolute;right:0;bottom:0;margin:0;padding:1px 4px;border-radius:4px 0 0 0;font-size:10px;color:white;background:#0008}.recipe .menu-dish-name b{display:block;line-height:1.4}.recipe.with-photo [data-add]{flex-shrink:0}';
-const previewSheet=document.createElement('div');
-previewSheet.className='sheet';
-previewSheet.innerHTML='<section class="panel" role="dialog" aria-modal="true" aria-label="菜品示意图"><button class="close-sheet" type="button" data-close-preview>关闭</button><h2 id="previewTitle"></h2><img class="photo-preview-img" id="previewImage" alt=""><p class="photo-preview-note"><span id="previewDetail">图片为示意图，实际做法和成品以家中制作情况为准。</span> <a id="previewSource" target="_blank" rel="noopener" hidden></a></p></section>';
-document.body.append(previewSheet);
-previewSheet.onclick=e=>{if(e.target===previewSheet||e.target.closest('[data-close-preview]'))previewSheet.classList.remove('show');};
-function previewDish(name){if(!dishImages[name])return;$('#previewTitle').textContent=name;$('#previewImage').src=photoUrl(name);$('#previewImage').alt=name+'示意图';$('#previewDetail').textContent=dishPhotoNotes[name]||'图片为菜品示意，实际成品以家中制作为准。';const src=dishImageSources[name],link=$('#previewSource');link.hidden=!src;if(src){if(src.url){link.href=src.url;}else{link.removeAttribute('href');}link.textContent='图片来源：'+src.label;}previewSheet.classList.add('show');}
-home = function(){const icons={鱼:'🐟',虾:'🦐',蟹:'🦀',贝类:'🐚',海鲜拼盘:'🍲',禽类:'🍗',猪肉类:'🥩',牛肉类:'🐂',蛋:'🥚',豆制品:'🫘',蔬菜类:'🥬',汤类:'🥣',主食:'🍚',蛙类:'🐸'};const tiles=Object.entries(catalog).map(([cat,foods])=>{const direct=directCategories.has(cat);const count=foods.reduce((n,[,d])=>n+d.length,0);return `<button class="category" type="button" data-cat="${cat}"><b>${cat}</b><small>${direct?`${count} 道菜 · ${cat==='主食'?'看图选菜':'直接选菜'}`:`${foods.length} 种食材 · 先选食材`}</small><em>${icons[cat]}</em></button>`;}).join('');$('#homeContent').innerHTML=`<div class="heading"><h2>先选想吃的类别</h2><span>选菜、搜索都可以</span></div><div class="categories">${tiles}</div>`;$('#homeContent').onclick=e=>{const b=e.target.closest('[data-cat]');if(b)openCategory(b.dataset.cat);};};
-const seafoodCategory=openCategory;
-openCategory = function(cat){if(!directCategories.has(cat))return seafoodCategory(cat);activeCat=cat;$('#home').hidden=true;$('#recipeView').hidden=true;$('#categoryView').hidden=false;const foods=catalog[cat];const body=cat==='主食'?`<p class="menu-intro">点图片可放大查看；9 张均为菜品示意图。</p><div class="dish-grid">${foods.flatMap(([,d])=>d).map(photoCard).join('')}</div>`:foods.map(([group,dishes],i)=>`<details class="menu-section" ${i===0?'open':''}><summary>${escapeText(group)}<small>${dishes.length} 道菜　⌄</small></summary><div class="menu-section-list">${dishes.map(d=>textDish(d,group)).join('')}</div></details>`).join('');$('#categoryView').innerHTML=`<div class="topbar"><button class="back" type="button" data-back>‹</button><div><h2>${cat}</h2><p>${foods.reduce((n,[,d])=>n+d.length,0)} 道菜 · ${cat==='主食'?'看图选菜':'按分组展开挑选'}</p></div></div>${body}`;$('#categoryView').onclick=e=>{const b=e.target.closest('button');if(!b)return;if(b.hasAttribute('data-back'))return showHome();if(b.dataset.preview)return previewDish(b.dataset.preview);if(b.dataset.add)add(b.dataset.add);};};
-search = function(q){if(!q){showHome();home();return;}$('#home').hidden=false;$('#categoryView').hidden=true;$('#recipeView').hidden=true;const rows=all().filter(x=>(x.name+x.food+x.cat).includes(q));const pictured=rows.filter(x=>dishImages[x.name]);const plain=rows.filter(x=>!dishImages[x.name]);$('#homeContent').innerHTML=`<div class="heading"><h2>搜索结果</h2><span>${rows.length} 道菜</span></div>${pictured.length?`<div class="dish-grid">${pictured.map(x=>photoCard(x.name)).join('')}</div>`:''}<div class="search-result">${plain.length?plain.map(x=>textDish(x.name,x.cat+' · '+x.food)).join(''):rows.length?'':'<div class="empty">没有找到，可使用下方“自定义菜”。</div>'}</div>`;$('#homeContent').onclick=e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.preview)return previewDish(b.dataset.preview);if(b.dataset.add)add(b.dataset.add);};};
-home();update();
+$('#contentHead').onclick = event => {
+  const button = event.target.closest('[data-group]');
+  if (!button) return;
+  rememberPosition();
+  selectedGroups.set(category, button.dataset.group);
+  renderMenu();
+};
+$('#search').oninput = event => {
+  rememberPosition();
+  query = event.target.value.trim();
+  renderMenu();
+};
+$('#clearSearch').onclick = () => {
+  rememberPosition();
+  query = '';
+  $('#search').value = '';
+  renderMenu();
+  $('#search').focus();
+};
+document.addEventListener('click', event => {
+  const button = event.target.closest('button');
+  if (!button) return;
+  if (button.hasAttribute('data-close')) return closeDialog(button.closest('dialog'));
+  if (button.dataset.add) return changeQuantity(button.dataset.add, 1);
+  if (button.dataset.minus) return changeQuantity(button.dataset.minus, -1);
+  if (button.dataset.preview) return preview(button.dataset.preview);
+  if (button.dataset.delete) {
+    current.items = current.items.filter(item => item.name !== button.dataset.delete);
+    save();
+    refreshSelection();
+    renderOrder();
+  }
+  if (button.id === 'searchCustom') openCustom(query);
+});
+$('#openOrder').onclick = openOrder;
+$('#reviewOrder').onclick = openOrder;
+$('#openMeal').onclick = () => openMeal();
+$('#changeOrderMeal').onclick = () => openMeal();
+$('#openCustom').onclick = () => openCustom();
+$('#mealOptions').onclick = event => {
+  const button = event.target.closest('[data-meal]');
+  if (!button) return;
+  mealChoice = button.dataset.meal;
+  renderMealOptions();
+};
+$('#mealForm').onsubmit = event => {
+  event.preventDefault();
+  const date = $('#date').value;
+  if (!validDate(date) || date < today()) {
+    $('#mealError').textContent = '请选择今天或之后的日期';
+    $('#mealError').hidden = false;
+    return;
+  }
+  switchMeal(date, mealChoice);
+  closeDialog($('#mealDialog'));
+};
+$('#customForm').onsubmit = event => {
+  event.preventDefault();
+  const name = $('#customName').value.trim();
+  if (!name) return $('#customName').focus();
+  changeQuantity(name, 1);
+  const item = current.items.find(item => item.name === name);
+  const note = $('#customNote').value.trim();
+  if (note) item.note = [item.note, note].filter(Boolean).join('；');
+  save();
+  closeDialog($('#customDialog'));
+  notify('已加入 ' + name);
+};
+$('#orderList').oninput = event => {
+  if (!event.target.hasAttribute('data-note')) return;
+  const item = current.items.find(item => item.name === event.target.dataset.note);
+  if (item) { item.note = event.target.value; save(); }
+};
+$('#note').oninput = event => { current.note = event.target.value; save(); };
+$('#generate').onclick = () => {
+  if (!current.items.length) return;
+  if (current.date < today()) {
+    $('#orderError').textContent = '这份草稿的日期已过，请先更换日期和餐次。';
+    $('#orderError').hidden = false;
+    return;
+  }
+  lastReceipt = `家庭预点菜单\n${current.date} · ${current.meal}\n${current.items.length} 道菜 · 共 ${current.items.reduce((sum, item) => sum + item.qty, 0)} 份\n\n${current.items.map((item, index) => `${index + 1}. ${item.name}${item.qty > 1 ? ' × ' + item.qty : ''}${item.note.trim() ? '\n   备注：' + item.note.trim() : ''}`).join('\n')}\n\n整餐备注：${current.note.trim() || '无'}`;
+  lastReceiptMessage = current.wish;
+  save();
+  showReceipt(lastReceipt, activeKey, true);
+};
+$('#lastReceipt').onclick = () => lastReceipt ? showReceipt(lastReceipt) : notify('还没有生成过预订单');
+$('#copyReceipt').onclick = async () => {
+  const text = receiptWithMessage();
+  try {
+    await navigator.clipboard.writeText(text);
+    $('#copyStatus').textContent = '已复制，现在可以打开微信粘贴发送。';
+  } catch {
+    $('#receiptText').textContent = text;
+    const range = document.createRange();
+    range.selectNodeContents($('#receiptText'));
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+    $('#copyStatus').textContent = '请长按上方清单文字，选择复制，再粘贴到微信。';
+  }
+};
+$('#editMeal').onclick = () => {
+  const [date, meal] = receiptKey.split('|');
+  switchMeal(date, meal);
+  openOrder();
+};
+$('#nextMeal').onclick = () => {
+  const [date, meal] = receiptKey.split('|');
+  const nextIndex = meals.indexOf(meal) + 1;
+  let nextDate = date;
+  if (nextIndex === meals.length) {
+    const next = new Date(date + 'T12:00:00');
+    next.setDate(next.getDate() + 1);
+    nextDate = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}-${String(next.getDate()).padStart(2, '0')}`;
+  }
+  openMeal(nextDate < today() ? today() : nextDate, meals[nextIndex % meals.length]);
+};
+window.addEventListener('storage', event => {
+  if (event.key !== storageKey || !event.newValue) return;
+  const latest = readStorage(storageKey, {});
+  localEntries = {...localEntries, ...(latest.entries || {})};
+  current = cleanMeal(localEntries[activeKey], current.date, current.meal);
+  lastReceipt = latest.lastReceipt || lastReceipt;
+  lastReceiptMessage = typeof latest.lastReceiptMessage === 'string' ? latest.lastReceiptMessage : lastReceiptMessage;
+  refreshSelection();
+  if ($('#orderDialog').open) renderOrder();
+});
+for (const dialog of document.querySelectorAll('dialog')) {
+  dialog.addEventListener('click', event => {
+    if (event.target !== dialog) return;
+    const bounds = dialog.getBoundingClientRect();
+    if (event.clientY < bounds.top || event.clientX < bounds.left || event.clientX > bounds.right) closeDialog(dialog);
+  });
+}
+// Sharing uses locally rendered PNGs so the card works offline and with any dish image source.
+let receiptBase = '';
+let shareFiles = [];
+let shareUrls = [];
+
+function updateGreeting() {
+  const time = new Date().getHours();
+  $('#greeting').textContent = time < 10 ? '今天也要好好吃早餐呀 ☀' : time < 17 ? '晚上想吃什么？今天听你的。' : '忙了一天，点几道喜欢的菜吧。';
+}
+function celebrateMeal() {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const offsets = [-100, -64, -28, 32, 68, 104];
+  $('#heartBurst').innerHTML = offsets.map((x, index) => `<span style="--x:${x}px;--y:${-26 - index % 3 * 12}px;--r:${x / 4}deg;--delay:${index * 50}ms">♡</span>`).join('');
+}
+function receiptWithMessage() {
+  const message = $('#wish').value.trim();
+  return receiptBase + (message ? '\n\n悄悄话：' + message : '');
+}
+$('#wish').oninput = event => {
+  lastReceiptMessage = event.target.value.slice(0, 120);
+  if (receiptKey === activeKey) current.wish = lastReceiptMessage;
+  $('#receiptText').textContent = receiptBase;
+  save();
+};
+
+function cardLines(context, text) {
+  const result = [];
+  for (const paragraph of text.split('\n')) {
+    const isNote = /^\s*备注|^整餐备注|^悄悄话/.test(paragraph);
+    const font = `${isNote ? '400 19px' : '500 23px'} -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif`;
+    const color = isNote ? '#887465' : '#234a41';
+    context.font = font;
+    let line = '';
+    for (const char of Array.from(paragraph)) {
+      if (line && context.measureText(line + char).width > 496) {
+        result.push({text: line, font, color});
+        line = '';
+      }
+      line += char;
+    }
+    result.push({text: line, font, color});
+  }
+  return result;
+}
+function paintHeart(context, x, y, size) {
+  context.save();
+  context.translate(x, y);
+  context.scale(size / 24, size / 24);
+  context.beginPath();
+  context.moveTo(12, 21);
+  context.bezierCurveTo(8, 17, 0, 12, 1, 6);
+  context.bezierCurveTo(2, -1, 10, -1, 12, 5);
+  context.bezierCurveTo(15, -1, 23, -1, 24, 6);
+  context.bezierCurveTo(25, 12, 17, 18, 12, 21);
+  context.fillStyle = '#c87864';
+  context.fill();
+  context.restore();
+}
+async function createCardImages(text) {
+  await document.fonts.ready;
+  const measure = document.createElement('canvas').getContext('2d');
+  const parts = text.split('\n');
+  const structured = parts[0] === '家庭预点菜单' && /^\d{4}-\d{2}-\d{2}/.test(parts[1] || '');
+  const meta = structured ? parts[1] : '家里的心愿菜单';
+  const count = structured && /道菜/.test(parts[2] || '') ? parts[2] : '';
+  const content = structured ? parts.slice(count ? 3 : 2).join('\n').trim() : text;
+  const lines = cardLines(measure, content);
+  const chunks = [];
+  for (let offset = 0; offset < lines.length; offset += 26) chunks.push(lines.slice(offset, offset + 26));
+  const files = [];
+  for (const [index, chunk] of chunks.entries()) {
+    const height = Math.max(640, 246 + chunk.length * 34 + 150);
+    const canvas = document.createElement('canvas');
+    canvas.width = 1200;
+    canvas.height = height * 2;
+    const context = canvas.getContext('2d');
+    context.scale(2, 2);
+    context.fillStyle = '#f2e6d6';
+    context.fillRect(0, 0, 600, height);
+    context.fillStyle = '#fffaf1';
+    context.fillRect(18, 18, 564, height - 36);
+    context.strokeStyle = '#e1d2bb';
+    context.strokeRect(28.5, 28.5, 543, height - 57);
+    context.fillStyle = '#8b7764';
+    context.font = '500 18px -apple-system, "PingFang SC", sans-serif';
+    context.fillText('今 日 家 宴', 52, 70);
+    paintHeart(context, 519, 51, 25);
+    context.fillStyle = '#214a40';
+    context.font = '600 42px -apple-system, "PingFang SC", sans-serif';
+    context.fillText('这一餐', 50, 134);
+    context.font = '400 22px -apple-system, "PingFang SC", sans-serif';
+    context.fillText(meta, 52, 178);
+    context.fillStyle = '#8b7764';
+    context.font = '400 17px -apple-system, "PingFang SC", sans-serif';
+    context.fillText(count, 52, 209);
+    context.beginPath();
+    context.moveTo(52, 228);
+    context.lineTo(548, 228);
+    context.strokeStyle = '#dedcc9';
+    context.stroke();
+    let y = 268;
+    for (const line of chunk) {
+      context.font = line.font;
+      context.fillStyle = line.color;
+      context.fillText(line.text, 52, y);
+      y += 34;
+    }
+    context.setLineDash([3, 5]);
+    context.beginPath();
+    context.moveTo(52, height - 122);
+    context.lineTo(548, height - 122);
+    context.stroke();
+    context.setLineDash([]);
+    context.textAlign = 'center';
+    context.fillStyle = '#99755e';
+    context.font = '400 19px -apple-system, "PingFang SC", sans-serif';
+    context.fillText('一起吃饭，就是今天的小幸福。', 300, height - 83);
+    context.font = '400 14px -apple-system, "PingFang SC", sans-serif';
+    context.fillText(chunks.length > 1 ? `心愿菜单 · ${index + 1} / ${chunks.length}` : '♡  想吃的，都在这里', 300, height - 51);
+    const blob = await new Promise((resolve, reject) => canvas.toBlob(value => value ? resolve(value) : reject(new Error('图片生成失败')), 'image/png'));
+    files.push(new File([blob], `这一餐-${structured ? parts[1].replace(/[^\d早中晚饭-]/g, '') : '心愿菜单'}-${index + 1}.png`, {type: 'image/png'}));
+  }
+  return files;
+}
+$('#makeCard').onclick = async () => {
+  const button = $('#makeCard');
+  const text = receiptWithMessage();
+  button.disabled = true;
+  button.textContent = '正在制作分享卡…';
+  try {
+    const files = await createCardImages(text);
+    if (!$('#receiptDialog').open) return;
+    if (text !== receiptWithMessage()) {
+      $('#copyStatus').textContent = '文字已更新，请再点一次制作分享卡。';
+      return;
+    }
+    shareUrls.forEach(url => URL.revokeObjectURL(url));
+    shareFiles = files;
+    shareUrls = files.map(file => URL.createObjectURL(file));
+    $('#shareImages').innerHTML = files.map((file, index) => `<figure class="share-page"><img src="${shareUrls[index]}" alt="这一餐分享卡，第${index + 1}张，共${files.length}张">${files.length > 1 ? `<figcaption>第 ${index + 1} / ${files.length} 张</figcaption>` : ''}<a href="${shareUrls[index]}" download="${escapeText(file.name)}">保存${files.length > 1 ? '第' + (index + 1) + '张' : '分享卡'}图片</a></figure>`).join('');
+    $('#shareCard').hidden = !(navigator.canShare && navigator.canShare({files}));
+    $('#shareStatus').textContent = files.length > 1 ? `清单较长，已完整排成 ${files.length} 张卡片，请逐张保存。` : '';
+    openDialog('#shareDialog');
+  } catch {
+    $('#copyStatus').textContent = '这次图片制作未成功，可以重试或先复制文字清单。';
+  } finally {
+    button.disabled = false;
+    button.textContent = '♡ 制作这一餐分享卡';
+  }
+};
+$('#shareCard').onclick = async () => {
+  try {
+    await navigator.share({files: shareFiles, title: '今日家宴 · 这一餐'});
+    $('#shareStatus').textContent = '已交给系统分享面板处理。';
+  } catch (error) {
+    if (error.name !== 'AbortError') $('#shareStatus').textContent = '可以长按图片保存，或使用图片下方的保存按钮。';
+  }
+};
+$('#backReceipt').onclick = () => openDialog('#receiptDialog');
+document.addEventListener('visibilitychange', () => { if (!document.hidden) updateGreeting(); });
+window.addEventListener('pagehide', event => {
+  if (!event.persisted) shareUrls.forEach(url => URL.revokeObjectURL(url));
+});
+updateGreeting();
+
+renderMenu();
+refreshSelection();
+save();
