@@ -2114,9 +2114,22 @@ function cleanItems(items) {
   return [...unique.values()];
 }
 function cleanMeal(value, date, meal) {
-  return {date, meal, items: cleanItems(value?.items), note: typeof value?.note === 'string' ? value.note : '', wish: typeof value?.wish === 'string' ? value.wish.slice(0, 120) : ''};
+  return {date, meal, items: cleanItems(value?.items), note: typeof value?.note === 'string' ? value.note : '', wish: typeof value?.wish === 'string' ? value.wish.slice(0, 120) : '', generated: value?.generated === true};
 }
-const stored = readStorage(storageKey, {});
+function loadVisit() {
+  const state = readStorage(storageKey, {});
+  let changed = false;
+  for (const [key, entry] of Object.entries(state.entries || {})) {
+    if (entry?.generated !== true) continue;
+    state.entries[key] = {...entry, items: [], note: '', wish: '', generated: false};
+    changed = true;
+  }
+  if (changed) {
+    try { localStorage.setItem(storageKey, JSON.stringify(state)); } catch {}
+  }
+  return state;
+}
+const stored = loadVisit();
 const hour = new Date().getHours();
 const defaultMeal = hour < 10 ? '早饭' : hour < 15 ? '中饭' : '晚饭';
 let activeKey = typeof stored.active === 'string' ? stored.active : `${today()}|${defaultMeal}`;
@@ -2224,6 +2237,7 @@ function changeQuantity(name, delta) {
   if (!item) return;
   item.qty = Math.min(999, item.qty + delta);
   current.items = current.items.filter(item => item.qty > 0);
+  current.generated = false;
   save();
   refreshSelection();
   if ($('#orderDialog').open) renderOrder();
@@ -2344,6 +2358,7 @@ document.addEventListener('click', event => {
   if (button.dataset.preview) return preview(button.dataset.preview);
   if (button.dataset.delete) {
     current.items = current.items.filter(item => item.name !== button.dataset.delete);
+    current.generated = false;
     save();
     refreshSelection();
     renderOrder();
@@ -2387,9 +2402,9 @@ $('#customForm').onsubmit = event => {
 $('#orderList').oninput = event => {
   if (!event.target.hasAttribute('data-note')) return;
   const item = current.items.find(item => item.name === event.target.dataset.note);
-  if (item) { item.note = event.target.value; save(); }
+  if (item) { item.note = event.target.value; current.generated = false; save(); }
 };
-$('#note').oninput = event => { current.note = event.target.value; save(); };
+$('#note').oninput = event => { current.note = event.target.value; current.generated = false; save(); };
 $('#generate').onclick = () => {
   if (!current.items.length) return;
   if (current.date < today()) {
@@ -2399,6 +2414,7 @@ $('#generate').onclick = () => {
   }
   lastReceipt = `家庭预点菜单\n${current.date} · ${current.meal}\n${current.items.length} 道菜 · 共 ${current.items.reduce((sum, item) => sum + item.qty, 0)} 份\n\n${current.items.map((item, index) => `${index + 1}. ${item.name}${item.qty > 1 ? ' × ' + item.qty : ''}${item.note.trim() ? '\n   备注：' + item.note.trim() : ''}`).join('\n')}\n\n整餐备注：${current.note.trim() || '无'}`;
   lastReceiptMessage = current.wish;
+  current.generated = true;
   save();
   showReceipt(lastReceipt, activeKey, true);
 };
@@ -2434,6 +2450,15 @@ $('#nextMeal').onclick = () => {
   }
   openMeal(nextDate < today() ? today() : nextDate, meals[nextIndex % meals.length]);
 };
+// Back navigation can restore a page without re-running its scripts.
+window.addEventListener('pageshow', event => {
+  if (!event.persisted) return;
+  const state = loadVisit();
+  localEntries = state.entries || {};
+  current = cleanMeal(localEntries[activeKey], current.date, current.meal);
+  for (const dialog of document.querySelectorAll('dialog[open]')) closeDialog(dialog);
+  refreshSelection();
+});
 window.addEventListener('storage', event => {
   if (event.key !== storageKey || !event.newValue) return;
   const latest = readStorage(storageKey, {});
